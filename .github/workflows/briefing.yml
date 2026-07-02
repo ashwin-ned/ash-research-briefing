@@ -46,11 +46,23 @@ jobs:
       - name: Generate briefing
         if: steps.gate.outputs.count != '0'
         run: |
+          claude --version
+          set +e
           claude --bare -p "$(cat prompts/briefing.md)" \
             --allowedTools "Read,Write" \
             --max-turns 20 \
             --model claude-sonnet-5 \
-            --output-format json > work/claude_run.json
+            --output-format json > work/claude_run.json 2> work/claude_run.stderr
+          status=$?
+          set -e
+          echo "--- claude exit status: $status ---"
+          echo "--- stderr ---"
+          cat work/claude_run.stderr || true
+          echo "--- stdout (work/claude_run.json) ---"
+          cat work/claude_run.json || true
+          if [ "$status" -ne 0 ]; then
+            exit "$status"
+          fi
           python -c "import json;d=json.load(open('work/claude_run.json'));print('cost_usd:',d.get('total_cost_usd'))"
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
