@@ -1,0 +1,5 @@
+title: "What I'm Reading"
+description: "Weekly research briefing — egocentric vision, world models, robot learning. Auto-curated, Claude-summarized."
+theme: minima
+plugins: [jekyll-feed]
+permalink: /:year/:month/:day/:title/

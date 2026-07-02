@@ -1,0 +1,53 @@
+# ── Retrieval settings ────────────────────────────────────────────
+arxiv_categories: [cs.CV, cs.RO, cs.LG, cs.AI]
+window_days: 7          # look-back window per run
+max_papers: 8           # hard cap on briefing length
+min_score: 7            # papers scoring below this (0–10) are dropped
+max_arxiv_results: 300  # cap on fetched candidates
+
+# ── Positive topics ───────────────────────────────────────────────
+# keywords → used literally in the arXiv query (recall)
+# note     → semantic guidance for the LLM judge (precision)
+# weight   → multiplier on the judge's raw score (0.5–1.5)
+topics:
+  - name: Egocentric video world models
+    keywords: ["world model", "V-JEPA", "JEPA", "egocentric video", "latent prediction"]
+    note: >
+      Action-conditioned latent-predictive models trained on egocentric video;
+      self-supervised representation learning for prediction and planning.
+    weight: 1.3
+
+  - name: Gaze and hand signals for perception
+    keywords: ["gaze", "hand pose", "hand keypoints", "eye tracking", "attention prediction"]
+    note: >
+      Human behavioral signals (gaze, hands) as conditioning or supervision
+      for video understanding, prediction, or robot policies.
+    weight: 1.2
+
+  - name: Humanoid and manipulation learning
+    keywords: ["humanoid", "imitation learning", "teleoperation", "whole-body control"]
+    note: >
+      Imitation learning and visuomotor policies for humanoid robots;
+      egocentric observation spaces; sim-to-real.
+    weight: 1.0
+
+  - name: Event-based vision
+    keywords: ["event camera", "neuromorphic vision", "event-based"]
+    note: >
+      Event cameras intersecting with self-supervised learning or
+      predictive architectures.
+    weight: 0.9
+
+  - name: Egocentric benchmarks and datasets
+    keywords: ["Ego4D", "EPIC-KITCHENS", "HD-EPIC", "egocentric benchmark", "Aria"]
+    note: New datasets, benchmarks, or evaluation protocols for egocentric perception.
+    weight: 0.9
+
+# ── Negative topics (explicit rejections; critical for precision) ─
+negative_topics:
+  - name: Pure video generation
+    note: Diffusion/AR video synthesis judged on visual quality, with no representation-learning, control, or robotics angle.
+  - name: Autonomous driving
+    note: Unless the method is explicitly egocentric-body-worn or transfers to embodied manipulation.
+  - name: Medical / remote-sensing imaging
+    note: Domain-specific CV outside embodied perception.

@@ -1,0 +1,84 @@
+name: Weekly research briefing
+
+on:
+  schedule:
+    - cron: "17 2 * * 5"   # Fri 02:17 UTC = 04:17 Europe/Berlin in summer (03:17 winter). See README.
+  workflow_dispatch:         # manual runs for testing
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: briefing
+  cancel-in-progress: false
+
+jobs:
+  briefing:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install -r requirements.txt
+
+      - name: Fetch candidates
+        run: |
+          mkdir -p work
+          python scripts/fetch_arxiv.py
+          python scripts/fetch_hf.py
+          python scripts/merge_enrich.py
+
+      - name: Short-circuit on empty week
+        id: gate
+        run: |
+          n=$(python -c "import json;print(len(json.load(open('work/candidates.json'))))")
+          echo "count=$n" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-node@v4
+        if: steps.gate.outputs.count != '0'
+        with: { node-version: "22" }
+      - run: npm install -g @anthropic-ai/claude-code
+        if: steps.gate.outputs.count != '0'
+
+      - name: Generate briefing
+        if: steps.gate.outputs.count != '0'
+        run: |
+          claude --bare -p "$(cat prompts/briefing.md)" \
+            --allowedTools "Read,Write" \
+            --max-turns 20 \
+            --model claude-sonnet-5 \
+            --output-format json > work/claude_run.json
+          python -c "import json;d=json.load(open('work/claude_run.json'));print('cost_usd:',d.get('total_cost_usd'))"
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+
+      - name: Validate
+        if: steps.gate.outputs.count != '0'
+        run: python scripts/validate.py
+
+      - name: Commit
+        if: steps.gate.outputs.count != '0'
+        run: |
+          git config user.name "briefing-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add _posts/ state/seen_ids.json
+          git diff --cached --quiet || git commit -m "briefing: $(date -u +%F)"
+          git push
+
+  deploy:
+    needs: briefing
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+        with: { ref: main }          # MUST re-fetch branch tip: the trigger SHA predates the bot's commit
+      - uses: actions/configure-pages@v5
+      - uses: actions/jekyll-build-pages@v1
+      - uses: actions/upload-pages-artifact@v3
+      - id: deployment
+        uses: actions/deploy-pages@v4
